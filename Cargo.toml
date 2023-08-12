@@ -2,6 +2,7 @@
 name = "leptos_start"
 version = "0.1.0"
 edition = "2021"
+resolver = "2"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -10,13 +11,16 @@ crate-type = ["cdylib", "rlib"]
 actix-files = { version = "0.6", optional = true }
 actix-web = { version = "4", optional = true, features = ["macros"] }
 console_error_panic_hook = "0.1"
-cfg-if = "1"
+cfg-if = "1.0.0"
 http = { version = "0.2", optional = true }
 leptos = { version = "0.4", features = ["nightly"] }
 leptos_meta = { version = "0.4", features = ["nightly"] }
 leptos_actix = { version = "0.4", optional = true }
 leptos_router = { version = "0.4", features = ["nightly"] }
 wasm-bindgen = "=0.2.86"
+serde = {version = "1.0.183", featuers = ["derive"]}
+sqlx = { version = "0.6.2", features = ["runtime-tokio-rustls", "sqlite"], optional=true}
+futures = {version = "*"}
 
 [features]
 csr = ["leptos/csr", "leptos_meta/csr", "leptos_router/csr"]
@@ -25,6 +29,7 @@ ssr = [
   "dep:actix-files",
   "dep:actix-web",
   "dep:leptos_actix",
+  "dep:sqlx",
   "leptos/ssr",
   "leptos_meta/ssr",
   "leptos_router/ssr",

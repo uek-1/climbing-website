@@ -1,6 +1,18 @@
+use crate::components::*;
+use cfg_if::cfg_if;
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
+
+cfg_if! {
+    if #[cfg(feature = "ssr")] {
+        use sqlx::{Connection, SqliteConnection};
+
+        pub async fn db() -> Result<SqliteConnection, ServerFnError> {
+            Ok(SqliteConnection::connect("sqlite:Problems.db").await?)
+        }
+    }
+}
 
 #[component]
 pub fn App(cx: Scope) -> impl IntoView {
@@ -32,8 +44,18 @@ pub fn App(cx: Scope) -> impl IntoView {
 #[component]
 fn HomePage(cx: Scope) -> impl IntoView {
     let date = Date::new(1, 1, 2003);
-    let route_data = vec![RouteData::default(); 5];
-    let set_data = SetData::new(route_data, date);
+
+    let problem_data = create_resource(cx, || (), |_| async move { get_problems().await });
+
+    let problem_data = if problem_data.read(cx) != None {
+        println!("recieved data");
+        problem_data.read(cx).unwrap_or(Ok(vec![]))
+    } else {
+        println!("couldn't read");
+        Ok(vec![])
+    };
+
+    let set_data = routeset::SetData::new(problem_data.unwrap(), date);
 
     view! { cx,
         <main class="container">
@@ -41,6 +63,32 @@ fn HomePage(cx: Scope) -> impl IntoView {
             <Set set_data={set_data}/>
         </main>
     }
+}
+
+#[server(GetProblems, "/api")]
+pub async fn get_problems() -> Result<Vec<ProblemData>, ServerFnError> {
+    // Get the database connection
+    let mut conn = match db().await {
+        Ok(x) => {
+            println!("Successfully connected to the databse!");
+            x
+        }
+        Err(e) => {
+            println!("Unsuccessful connection : {e:?}");
+            return Err(e);
+        }
+    };
+
+    let mut problems = vec![];
+    // Select * from Problems
+    use futures::TryStreamExt;
+
+    let mut rows = sqlx::query_as::<_, ProblemData>("SELECT * FROM problems").fetch(&mut conn);
+    while let Some(row) = rows.try_next().await? {
+        problems.push(row);
+    }
+
+    Ok(problems)
 }
 
 /// 404 - Not Found
@@ -66,88 +114,14 @@ fn NotFound(cx: Scope) -> impl IntoView {
 }
 
 #[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
-struct Date {
-    day: u8,
-    month: u8,
-    year: u32,
+pub struct Date {
+    pub day: u8,
+    pub month: u8,
+    pub year: u32,
 }
 
 impl Date {
-    fn new(day: u8, month: u8, year: u32) -> Self {
+    pub fn new(day: u8, month: u8, year: u32) -> Self {
         Date { day, month, year }
-    }
-}
-
-#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
-struct RouteData {
-    image: bool,
-    grade: u8,
-    setter: String,
-    likes: u32,
-}
-
-impl Default for RouteData {
-    fn default() -> Self {
-        RouteData {
-            image: false,
-            grade: 0,
-            setter: String::from("Unknown"),
-            likes: 0,
-        }
-    }
-}
-
-#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
-struct SetData {
-    routes: Vec<RouteData>,
-    date: Date,
-}
-
-impl SetData {
-    fn new(routes: Vec<RouteData>, date: Date) -> Self {
-        SetData { routes, date }
-    }
-}
-
-#[component]
-fn Set(cx: Scope, set_data: SetData) -> impl IntoView {
-    view! { cx,
-        <article>
-            <header>
-                <h2>"Set of "{set_data.date.day}"/" {set_data.date.month} "/" {set_data.date.year} </h2>
-            </header>
-
-            <For
-            each=move || set_data.clone().routes
-            key= move |x| x.clone()
-            view=move|cx, data: RouteData| view!{cx,
-                <ClimbingRouteItem route_data = data />
-            }/>
-        </article>
-    }
-}
-
-#[component]
-fn ClimbingRouteItem(cx: Scope, route_data: RouteData) -> impl IntoView {
-    view! {cx,
-
-        <style>
-        "
-        .center {
-          display: block;
-          margin-left: auto;
-          margin-right: auto;
-          width: 50%;
-        "
-        </style>
-
-        <article>
-            <img src=route_data.image class="center" style="width:100px; height:100px"/>
-            <div class="grid">
-                <p>"Grade: " {route_data.grade}</p>
-                <p>"Setter: " {route_data.setter}</p>
-                <p>"Likes: " {route_data.likes}</p>
-            </div>
-        </article>
     }
 }
