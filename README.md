@@ -1,3 +1,3 @@
-# UMN Climbing Gym Set Website
+# Climbing Gym Website
 
 Made in Rust!
