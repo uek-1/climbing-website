@@ -6,10 +6,14 @@ use leptos_router::*;
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
-        use sqlx::{Connection, SqliteConnection};
+        use sqlx::{Connection, SqliteConnection, sqlite::SqliteConnectOptions};
 
         pub async fn db() -> Result<SqliteConnection, ServerFnError> {
-            Ok(SqliteConnection::connect("sqlite:Problems.db").await?)
+            let options = SqliteConnectOptions::new()
+                .filename("problems.db")
+                .create_if_missing(true);
+
+            Ok(SqliteConnection::connect_with(&options).await?)
         }
     }
 }
@@ -45,23 +49,44 @@ pub fn App(cx: Scope) -> impl IntoView {
 fn HomePage(cx: Scope) -> impl IntoView {
     let date = Date::new(1, 1, 2003);
 
-    let problem_data = create_resource(cx, || (), |_| async move { get_problems().await });
-
-    let problem_data = if problem_data.read(cx) != None {
-        println!("recieved data");
-        problem_data.read(cx).unwrap_or(Ok(vec![]))
-    } else {
-        println!("couldn't read");
-        Ok(vec![])
-    };
-
-    let set_data = routeset::SetData::new(problem_data.unwrap(), date);
-
     view! { cx,
+        <Await
+            future = |cx| get_problems()
+            bind: problem_data
+        >
         <main class="container">
             <h1 style="text-align:center">"Climbing Website"</h1>
-            <Set set_data={set_data}/>
+            <Set set_data={
+                SetData::new(problem_data.clone().unwrap_or(vec![]), date.clone())
+        }/>
         </main>
+        </Await>
+    }
+}
+
+fn handle_problems_resource(
+    cx: Scope,
+    problem_data: Resource<(), Result<Vec<ProblemData>, ServerFnError>>,
+    date: Date,
+) -> routeset::SetData {
+    match problem_data.read(cx) {
+        None => {
+            println!("Loading");
+            routeset::SetData::new(vec![], date)
+        }
+        Some(x) => {
+            let res = match x {
+                Ok(y) => {
+                    println!("Read {y:?} from database");
+                    y
+                }
+                Err(e) => {
+                    println!("Error reading from databse");
+                    vec![]
+                }
+            };
+            routeset::SetData::new(res, date)
+        }
     }
 }
 
@@ -83,8 +108,21 @@ pub async fn get_problems() -> Result<Vec<ProblemData>, ServerFnError> {
     // Select * from Problems
     use futures::TryStreamExt;
 
+    sqlx::query(
+        r#"
+    CREATE TABLE IF NOT EXISTS problems (
+        image bool,
+        grade int,
+        setter text,
+        likes int
+        );"#,
+    )
+    .execute(&mut conn)
+    .await?;
+
     let mut rows = sqlx::query_as::<_, ProblemData>("SELECT * FROM problems").fetch(&mut conn);
     while let Some(row) = rows.try_next().await? {
+        println!("{row:?}");
         problems.push(row);
     }
 

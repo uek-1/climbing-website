@@ -1,10 +1,10 @@
 use super::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Deserialize, Serialize)]
+#[derive(Hash, Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Deserialize, Serialize)]
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
 pub struct ProblemData {
-    image: bool,
+    image: String,
     grade: u8,
     setter: String,
     likes: u32,
@@ -13,7 +13,7 @@ pub struct ProblemData {
 impl Default for ProblemData {
     fn default() -> Self {
         ProblemData {
-            image: false,
+            image: String::from("false"),
             grade: 0,
             setter: String::from("Unknown"),
             likes: 0,
