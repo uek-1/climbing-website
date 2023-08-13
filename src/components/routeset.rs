@@ -8,6 +8,7 @@ pub struct ProblemData {
     grade: u8,
     setter: String,
     likes: u32,
+    pub date: String,
 }
 
 impl Default for ProblemData {
@@ -17,11 +18,12 @@ impl Default for ProblemData {
             grade: 0,
             setter: String::from("Unknown"),
             likes: 0,
+            date: String::from(""),
         }
     }
 }
 
-#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Serialize, Deserialize, Debug)]
 pub struct SetData {
     problems: Vec<ProblemData>,
     date: Date,
@@ -34,7 +36,7 @@ impl SetData {
 }
 
 #[component]
-pub fn Set(cx: Scope, set_data: SetData) -> impl IntoView {
+pub fn SetItem(cx: Scope, set_data: SetData) -> impl IntoView {
     view! { cx,
         <article>
             <header>
@@ -48,6 +50,21 @@ pub fn Set(cx: Scope, set_data: SetData) -> impl IntoView {
                 <ProblemItem problem_data=data />
             }/>
         </article>
+    }
+}
+
+#[component]
+pub fn Sets(cx: Scope, data: Vec<SetData>) -> impl IntoView {
+    view! {cx,
+        <For each=move || data.clone()
+         key = |x| x.clone()
+         view = move |cx, set_data: SetData| {
+            view!{
+                cx,
+                <SetItem set_data=set_data/>
+            }
+        }/>
+
     }
 }
 

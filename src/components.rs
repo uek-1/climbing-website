@@ -5,5 +5,5 @@ use leptos_meta::*;
 use leptos_router::*;
 pub use routeset::ProblemData;
 pub use routeset::ProblemItem;
-pub use routeset::Set;
 pub use routeset::SetData;
+pub use routeset::Sets;
