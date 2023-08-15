@@ -4,10 +4,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Hash, Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Deserialize, Serialize)]
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
 pub struct ProblemData {
-    image: String,
-    grade: u8,
-    setter: String,
-    likes: u32,
+    pub image: String,
+    pub grade: u8,
+    pub setter: String,
+    pub likes: u32,
     pub date: String,
 }
 
@@ -23,10 +23,16 @@ impl Default for ProblemData {
     }
 }
 
+impl ProblemData {
+    pub fn get_date(&self) -> String {
+        self.date.clone()
+    }
+}
+
 #[derive(Hash, PartialEq, Eq, PartialOrd, Ord, Clone, Serialize, Deserialize, Debug)]
 pub struct SetData {
     problems: Vec<ProblemData>,
-    date: Date,
+    pub date: Date,
 }
 
 impl SetData {
@@ -38,18 +44,16 @@ impl SetData {
 #[component]
 pub fn SetItem(cx: Scope, set_data: SetData) -> impl IntoView {
     view! { cx,
-        <article>
-            <header>
-                <h2>"Set of "{set_data.date.day}"/" {set_data.date.month} "/" {set_data.date.year} </h2>
-            </header>
+        <header>
+            <h2>"Set of "{set_data.date.day}"/" {set_data.date.month} "/" {set_data.date.year} </h2>
+        </header>
 
-            <For
-            each=move || set_data.clone().problems
-            key= move |x| x.clone()
-            view=move|cx, data: ProblemData| view!{cx,
-                <ProblemItem problem_data=data />
-            }/>
-        </article>
+        <For
+        each=move || set_data.clone().problems
+        key= move |x| x.clone()
+        view=move|cx, data: ProblemData| view!{cx,
+            <ProblemItem problem_data=data />
+        }/>
     }
 }
 

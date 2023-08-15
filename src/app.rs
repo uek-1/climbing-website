@@ -31,17 +31,32 @@ pub fn App(cx: Scope) -> impl IntoView {
 
         // sets the document title
         <Title text="Climbing Website"/>
-
         // content for this welcome page
         <Router>
-            <main>
+            <TopNavBar />
+            <main class="container">
                 <Routes>
                     <Route path="" view=HomePage/>
                     <Route path="/archive" view=NotFound/>
-                    <Route path="/hof" view=NotFound/>
+                    <Route path="/admin" view=AdminPage/>
                 </Routes>
             </main>
         </Router>
+    }
+}
+
+#[component]
+pub fn TopNavBar(cx: Scope) -> impl IntoView {
+    view! { cx,
+        <header class="container-fluid">
+            <nav>
+                <ul>
+                    <li><a href="/">"Home"</a></li>
+                    <li><a href="/admin">"Admin"</a></li>
+                    <li><a href="/archive">"Archive"</a></li>
+                </ul>
+            </nav>
+        </header>
     }
 }
 
@@ -53,10 +68,10 @@ fn HomePage(cx: Scope) -> impl IntoView {
             future = |cx| get_sets()
             bind:sets
         >
-        <main class="container">
-            <h1 style="text-align:center">"Climbing Website"</h1>
-            <Sets data=sets.clone()/>
-        </main>
+            <article id="sets">
+                <header style="text-align:center"><h1>"Climbing Website"</h1></header>
+                <Sets data=sets.clone()/>
+            </article>
         </Await>
     }
 }

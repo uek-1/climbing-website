@@ -1,5 +1,9 @@
+pub mod admin_page;
 pub mod routeset;
+use crate::app::get_problems;
+use crate::app::get_sets;
 use crate::app::Date;
+pub use admin_page::AdminPage;
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
