@@ -1,5 +1,20 @@
 use super::*;
+use crate::cfg_if;
 use serde::{Deserialize, Serialize};
+
+cfg_if! {
+    if #[cfg(feature = "ssr")] {
+        use sqlx::{Connection, SqliteConnection, sqlite::SqliteConnectOptions};
+
+        pub async fn db() -> Result<SqliteConnection, ServerFnError> {
+            let options = SqliteConnectOptions::new()
+                .filename("problems.db")
+                .create_if_missing(true);
+
+            Ok(SqliteConnection::connect_with(&options).await?)
+        }
+    }
+}
 
 #[derive(Hash, Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Deserialize, Serialize)]
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
@@ -95,4 +110,67 @@ pub fn ProblemItem(cx: Scope, problem_data: ProblemData) -> impl IntoView {
             </div>
         </article>
     }
+}
+
+#[server(AddProblem, "/api")]
+pub async fn add_problem(problem: ProblemData) -> Result<(), ServerFnError> {
+    let problem = ProblemData::default();
+    let mut conn = db().await?;
+    let query_string = format!(
+        "INSERT INTO problems VALUES {} {} {} {} {}",
+        problem.image, problem.grade, problem.setter, problem.likes, problem.date
+    );
+    let query = sqlx::query(&query_string).execute(&mut conn).await?;
+
+    Ok(())
+}
+
+pub async fn get_sets() -> Vec<SetData> {
+    let problems = get_problems().await;
+    println!("{problems:?}");
+    let problems = problems.unwrap_or(vec![]);
+    let mut set_map = std::collections::HashMap::new();
+    for problem in problems {
+        set_map
+            .entry(problem.date.clone())
+            .or_insert(vec![])
+            .push(problem);
+    }
+
+    set_map
+        .into_iter()
+        .map(|(k, v)| SetData::new(v, Date::from(k)))
+        .inspect(|x| println!("{:?}", x))
+        .collect()
+}
+
+#[server(GetProblems, "/api")]
+pub async fn get_problems() -> Result<Vec<ProblemData>, ServerFnError> {
+    // Get the database connection
+    let mut conn = db().await?;
+    let mut problems = vec![];
+    // Select * from Problems
+    use futures::TryStreamExt;
+
+    sqlx::query(
+        r#"
+    CREATE TABLE IF NOT EXISTS problems (
+        image bool,
+        grade int,
+        setter text,
+        likes int,
+        date text
+        );"#,
+    )
+    .execute(&mut conn)
+    .await?;
+
+    let mut rows = sqlx::query_as::<_, ProblemData>("SELECT * FROM problems").fetch(&mut conn);
+
+    while let Some(row) = rows.try_next().await? {
+        println!("{row:?}");
+        problems.push(row);
+    }
+
+    Ok(problems)
 }

@@ -1,6 +1,6 @@
-use super::get_problems;
 use super::SetData;
 use crate::app::TopNavBar;
+use crate::components::routeset::{add_problem, get_problems, get_sets};
 use crate::components::ProblemData;
 use cfg_if::cfg_if;
 use leptos::*;
@@ -8,14 +8,22 @@ use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
 
+#[server(HelloWorld, "/api")]
+async fn hello_world(input: String) -> Result<(), ServerFnError> {
+    println!("hello_world");
+    Ok(())
+}
+
 #[component]
 pub fn AdminPage(cx: Scope) -> impl IntoView {
     let (is_submit, set_is_submit) = create_signal(cx, false);
+    let action = create_server_action::<HelloWorld>(cx);
     view! {
     cx,
     <button on:click= move |_| {
-      set_is_submit(true)
+        set_is_submit(true)
     } >"Add Item"</button>
+
     <Await future=|cx| get_problems() bind:data>
 
       <Show
@@ -68,10 +76,13 @@ pub fn ProblemTable(cx: Scope, data: Vec<ProblemData>) -> impl IntoView {
 
 #[component]
 pub fn AddItemModal(cx: Scope, write_flag: WriteSignal<bool>) -> impl IntoView {
+    use super::routeset::AddProblem;
+    let add_problem = create_server_action::<AddProblem>(cx);
+
     view! {cx,
     <dialog open>
       <article>
-        <form>
+        <ActionForm action=add_problem>
           <label for="image">
             Photo
             <input type="text" id="image" name="image" placeholder="Image" required/>
@@ -90,7 +101,7 @@ pub fn AddItemModal(cx: Scope, write_flag: WriteSignal<bool>) -> impl IntoView {
           </label>
 
           <button type="submit">Submit</button>
-        </form>
+        </ActionForm>
       </article>
     </dialog>
     }

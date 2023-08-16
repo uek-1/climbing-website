@@ -5,20 +5,6 @@ use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
 
-cfg_if! {
-    if #[cfg(feature = "ssr")] {
-        use sqlx::{Connection, SqliteConnection, sqlite::SqliteConnectOptions};
-
-        pub async fn db() -> Result<SqliteConnection, ServerFnError> {
-            let options = SqliteConnectOptions::new()
-                .filename("problems.db")
-                .create_if_missing(true);
-
-            Ok(SqliteConnection::connect_with(&options).await?)
-        }
-    }
-}
-
 #[component]
 pub fn App(cx: Scope) -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
@@ -65,7 +51,7 @@ pub fn TopNavBar(cx: Scope) -> impl IntoView {
 fn HomePage(cx: Scope) -> impl IntoView {
     view! { cx,
         <Await
-            future = |cx| get_sets()
+            future = |cx| routeset::get_sets()
             bind:sets
         >
             <article id="sets">
@@ -74,66 +60,6 @@ fn HomePage(cx: Scope) -> impl IntoView {
             </article>
         </Await>
     }
-}
-
-pub async fn get_sets() -> Vec<SetData> {
-    let problems = get_problems().await;
-    println!("{problems:?}");
-    let problems = problems.unwrap_or(vec![]);
-    let mut set_map = std::collections::HashMap::new();
-    for problem in problems {
-        set_map
-            .entry(problem.date.clone())
-            .or_insert(vec![])
-            .push(problem);
-    }
-
-    set_map
-        .into_iter()
-        .map(|(k, v)| SetData::new(v, Date::from(k)))
-        .inspect(|x| println!("{:?}", x))
-        .collect()
-}
-
-#[server(GetProblems, "/api")]
-pub async fn get_problems() -> Result<Vec<ProblemData>, ServerFnError> {
-    // Get the database connection
-    let mut conn = match db().await {
-        Ok(x) => {
-            println!("Successfully connected to the databse!");
-            x
-        }
-        Err(e) => {
-            println!("Unsuccessful connection : {e:?}");
-            return Err(e);
-        }
-    };
-
-    let mut problems = vec![];
-    // Select * from Problems
-    use futures::TryStreamExt;
-
-    sqlx::query(
-        r#"
-    CREATE TABLE IF NOT EXISTS problems (
-        image bool,
-        grade int,
-        setter text,
-        likes int,
-        date text
-        );"#,
-    )
-    .execute(&mut conn)
-    .await?;
-
-    let mut rows = sqlx::query_as::<_, ProblemData>("SELECT * FROM problems").fetch(&mut conn);
-
-    while let Some(row) = rows.try_next().await? {
-        println!("{row:?}");
-        problems.push(row);
-    }
-
-    Ok(problems)
 }
 
 /// 404 - Not Found
