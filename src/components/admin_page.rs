@@ -8,16 +8,31 @@ use leptos_meta::*;
 use leptos_router::*;
 use serde::{Deserialize, Serialize};
 
-#[server(HelloWorld, "/api")]
-async fn hello_world(input: String) -> Result<(), ServerFnError> {
-    println!("hello_world");
-    Ok(())
+#[server(AddProblemFromString, "/api")]
+async fn add_problem_from_string(
+    image: String,
+    grade: String,
+    setter: String,
+    date: String,
+) -> Result<(), ServerFnError> {
+    use super::routeset::AddProblem;
+    let data = ProblemData {
+        image,
+        grade: grade.parse()?,
+        setter,
+        likes: 0,
+        date,
+    };
+    println!("CREATED DATA {data:?}");
+    let res = add_problem(data).await;
+    println!("{res:?}");
+    return res;
 }
 
 #[component]
 pub fn AdminPage(cx: Scope) -> impl IntoView {
     let (is_submit, set_is_submit) = create_signal(cx, false);
-    let action = create_server_action::<HelloWorld>(cx);
+    let action = create_server_action::<AddProblemFromString>(cx);
     view! {
     cx,
     <button on:click= move |_| {
@@ -77,30 +92,38 @@ pub fn ProblemTable(cx: Scope, data: Vec<ProblemData>) -> impl IntoView {
 #[component]
 pub fn AddItemModal(cx: Scope, write_flag: WriteSignal<bool>) -> impl IntoView {
     use super::routeset::AddProblem;
-    let add_problem = create_server_action::<AddProblem>(cx);
-
+    let add_problem = create_server_action::<AddProblemFromString>(cx);
+    let recent_sub = add_problem.input();
+    let recent_val = add_problem.value();
+    create_effect(cx, move |_| {
+        if let Some(_) = recent_sub() {
+            if let Some(_) = recent_val() {
+                write_flag(false)
+            }
+        }
+    });
     view! {cx,
     <dialog open>
       <article>
         <ActionForm action=add_problem>
           <label for="image">
-            Photo
-            <input type="text" id="image" name="image" placeholder="Image" required/>
+            "Photo"
+            <input type="text" id="image" name="image"  placeholder="Image" required/>
           </label>
           <label for="grade">
-            Grade
+            "Grade"
             <input type="text" id="grade" name="grade" placeholder="grade" required/>
           </label>
           <label for="setter">
-            Setter
+            "Setter"
             <input type="text" id="setter" name="setter" placeholder="setter" required/>
           </label>
           <label for="date">
-            Date
+            "Date"
             <input type="text" id="date" name="date" placeholder="date" required/>
           </label>
+          <input type="submit" value="Submit">"Submit"</input>
 
-          <button type="submit">Submit</button>
         </ActionForm>
       </article>
     </dialog>

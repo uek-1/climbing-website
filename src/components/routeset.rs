@@ -114,11 +114,10 @@ pub fn ProblemItem(cx: Scope, problem_data: ProblemData) -> impl IntoView {
 
 #[server(AddProblem, "/api")]
 pub async fn add_problem(problem: ProblemData) -> Result<(), ServerFnError> {
-    let problem = ProblemData::default();
     let mut conn = db().await?;
     let query_string = format!(
-        "INSERT INTO problems VALUES {} {} {} {} {}",
-        problem.image, problem.grade, problem.setter, problem.likes, problem.date
+        "INSERT INTO problems VALUES ('{}', {}, '{}', {}, '{}')",
+        "false", problem.grade, problem.setter, problem.likes, problem.date
     );
     let query = sqlx::query(&query_string).execute(&mut conn).await?;
 
@@ -127,14 +126,12 @@ pub async fn add_problem(problem: ProblemData) -> Result<(), ServerFnError> {
 
 pub async fn get_sets() -> Vec<SetData> {
     let problems = get_problems().await;
-    println!("{problems:?}");
+    println!("P {problems:?}");
     let problems = problems.unwrap_or(vec![]);
     let mut set_map = std::collections::HashMap::new();
     for problem in problems {
-        set_map
-            .entry(problem.date.clone())
-            .or_insert(vec![])
-            .push(problem);
+        let date = Date::from(problem.date.clone());
+        set_map.entry(date).or_insert(vec![]).push(problem);
     }
 
     set_map
@@ -167,9 +164,15 @@ pub async fn get_problems() -> Result<Vec<ProblemData>, ServerFnError> {
 
     let mut rows = sqlx::query_as::<_, ProblemData>("SELECT * FROM problems").fetch(&mut conn);
 
-    while let Some(row) = rows.try_next().await? {
-        println!("{row:?}");
-        problems.push(row);
+    while let res = rows.try_next().await {
+        match res {
+            Ok(Some(row)) => {
+                println!("R {row:?}");
+                problems.push(row);
+            }
+            Ok(None) => break,
+            Err(x) => println!("{x:?}"),
+        };
     }
 
     Ok(problems)

@@ -99,15 +99,28 @@ impl Date {
 
 impl From<String> for Date {
     fn from(value: String) -> Self {
-        let mut value = value.split("/");
-        let mut day = value.nth(0);
-        let mut month = value.nth(1);
-        let mut year = value.nth(2);
+        let mut value: Vec<String> = value.split("/").map(|x| x.to_string()).collect();
+        let mut day = value.get(0);
+        let mut month = value.get(1);
+        let mut year = value.get(2);
 
         Date {
             day: day.map(|x| x.parse().unwrap_or(0)).unwrap_or(0),
             month: month.map(|x| x.parse().unwrap_or(0)).unwrap_or(0),
             year: year.map(|x| x.parse().unwrap_or(0)).unwrap_or(0),
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn date_from_string_test() {
+        let string = "1/2/3".to_string();
+        let date = Date::from(string);
+        println!("{date:?}");
+        assert_eq!(date, Date::new(1, 2, 3))
     }
 }
